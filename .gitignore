@@ -1,0 +1,19 @@
+﻿__pycache__/
+*.pyc
+*.pyo
+dist/
+build/
+*.spec
+*.egg-info/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 敏感文件 - 不上传
+config/.keys
+config/.license
+config/sold_keys.dat
+tools/
+tools/**/*.py
+tools/**/*.bat
