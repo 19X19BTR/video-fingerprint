@@ -386,18 +386,20 @@ class App:
         VIDEO_EXTS = {'.mp4', '.avi', '.mkv', '.mov', '.flv', '.wmv', '.ts', '.m4v', '.mpg', '.mpeg', '.3gp'}
 
         def _on_drop(files):
-            added = 0
-            for f in files:
-                path = f.decode('gbk') if isinstance(f, bytes) else f
-                if os.path.splitext(path)[1].lower() in VIDEO_EXTS and path not in self.files:
-                    self.files.append(path)
-                    self.listbox.insert(tk.END, path)
-                    added += 1
-            if added:
-                self.cnt_lbl.config(text=f"已选 {len(self.files)} 个文件")
+            try:
+                added = 0
+                for f in files:
+                    path = f.decode('gbk') if isinstance(f, bytes) else f
+                    if os.path.splitext(path)[1].lower() in VIDEO_EXTS and path not in self.files:
+                        self.files.append(path)
+                        self.listbox.insert(tk.END, path)
+                        added += 1
+                if added:
+                    self.cnt_lbl.config(text=f"已选 {len(self.files)} 个文件")
+            except Exception as e:
+                print(f"拖放错误: {e}")
 
-        windnd.hook_dropfiles(lf, func=_on_drop)
-        windnd.hook_dropfiles(self.listbox, func=_on_drop)
+        windnd.hook_dropfiles(self.root, func=_on_drop)
 
         # 第二步：每条生成几份
         tk.Label(body, text="第二步：每条视频生成几份",
