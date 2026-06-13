@@ -1,5 +1,5 @@
 """
-视频指纹批量修改工具 V2.0
+视频指纹批量修改工具
 极简三步：选视频 → 选份数 → 开始生成
 - 命名：原文件名_8位随机hex.mp4
 - 输出：源视频同目录
@@ -15,9 +15,12 @@ import hashlib
 import json
 import time
 import threading
+import ctypes
+import ctypes.wintypes
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import windnd
+import tkinterdnd2
+
 from datetime import datetime
 from pathlib import Path
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -326,8 +329,8 @@ class App:
     def __init__(self):
         self.cm = CreditManager()
         self.state = self.cm.get_state()
-        self.root = tk.Tk()
-        self.root.title("视频指纹批量修改工具 V2.0")
+        self.root = tkinterdnd2.TkinterDnD.Tk()
+        self.root.title("视频指纹批量修改工具")
         self.root.geometry("620x480")
         self.root.resizable(False, False)
         self.root.configure(bg=self.BG)
@@ -340,7 +343,7 @@ class App:
         top.pack(fill='x')
         top.pack_propagate(False)
 
-        tk.Label(top, text="  视频指纹批量修改工具 V2.0",
+        tk.Label(top, text="  视频指纹批量修改工具",
                  font=('Microsoft YaHei', 12, 'bold'), fg='white', bg=self.HEADER_BG
                  ).pack(side='left', padx=10)
 
@@ -369,6 +372,7 @@ class App:
         btn_row = tk.Frame(body, bg=self.BG)
         btn_row.pack(fill='x', pady=(2, 5))
         tk.Button(btn_row, text="添加视频", command=self._add, width=10).pack(side='left')
+        tk.Button(btn_row, text="删除选中", command=self._delete_selected, width=8).pack(side='left', padx=5)
         tk.Button(btn_row, text="清空", command=self._clear, width=6).pack(side='left', padx=5)
         self.cnt_lbl = tk.Label(btn_row, text="已选 0 个文件",
                                 font=('Microsoft YaHei', 9), bg=self.BG)
@@ -376,30 +380,34 @@ class App:
 
         lf = tk.Frame(body, bg=self.BG)
         lf.pack(fill='x', pady=(0, 10))
-        self.listbox = tk.Listbox(lf, height=6, font=('Consolas', 9))
+        self.listbox = tk.Listbox(lf, height=6, font=('Consolas', 9), selectmode=tk.EXTENDED)
         sb = tk.Scrollbar(lf, command=self.listbox.yview)
         self.listbox.config(yscrollcommand=sb.set)
         self.listbox.pack(side='left', fill='both', expand=True)
         sb.pack(side='right', fill='y')
 
-        # 拖放支持
+        # 拖放支持（tkinterdnd2，Tcl原生扩展，无GIL冲突）
         VIDEO_EXTS = {'.mp4', '.avi', '.mkv', '.mov', '.flv', '.wmv', '.ts', '.m4v', '.mpg', '.mpeg', '.3gp'}
 
-        def _on_drop(files):
+        def _on_drop(event):
             try:
-                added = 0
-                for f in files:
-                    path = f.decode('gbk') if isinstance(f, bytes) else f
+                # tkinterdnd2 返回的路径用空格分隔，但带空格的路径用 {} 包裹
+                raw = event.data
+                files = []
+                # 解析 {path with spaces} 和 path_without_spaces
+                import re
+                parts = re.findall(r'\{([^}]+)\}|([^\s{}]+)', raw)
+                for group in parts:
+                    path = group[0] or group[1]
                     if os.path.splitext(path)[1].lower() in VIDEO_EXTS and path not in self.files:
                         self.files.append(path)
                         self.listbox.insert(tk.END, path)
-                        added += 1
-                if added:
-                    self.cnt_lbl.config(text=f"已选 {len(self.files)} 个文件")
+                self.cnt_lbl.config(text=f"已选 {len(self.files)} 个文件")
             except Exception as e:
                 print(f"拖放错误: {e}")
 
-        windnd.hook_dropfiles(self.root, func=_on_drop)
+        self.listbox.drop_target_register(tkinterdnd2.DND_FILES)
+        self.listbox.dnd_bind('<<Drop>>', _on_drop)
 
         # 第二步：每条生成几份
         tk.Label(body, text="第二步：每条视频生成几份",
@@ -508,6 +516,18 @@ class App:
             if f not in self.files:
                 self.files.append(f)
                 self.listbox.insert(tk.END, f)
+        self.cnt_lbl.config(text=f"已选 {len(self.files)} 个文件")
+
+    def _delete_selected(self):
+        """删除选中的视频文件"""
+        selected = self.listbox.curselection()
+        if not selected:
+            messagebox.showinfo("提示", "请先选择要删除的视频")
+            return
+        # 从后往前删除，避免索引偏移
+        for idx in reversed(selected):
+            self.listbox.delete(idx)
+            self.files.pop(idx)
         self.cnt_lbl.config(text=f"已选 {len(self.files)} 个文件")
 
     def _clear(self):

@@ -30,6 +30,12 @@ video-fingerprint/
 
 ## 快速开始
 
+### 安装依赖
+
+```bash
+pip install cryptography tkinterdnd2
+```
+
 ### 客户端运行
 
 ```bash
